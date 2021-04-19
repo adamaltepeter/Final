@@ -1,0 +1,119 @@
+---
+title: "Final Project"
+author: "Takumi Umemaki"
+date: "2021/4/12"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Final Project: IBM Employee Attrition Prediction
+
+### Import Data
+```{r}
+hr <- read.csv("IBM HR Data new.csv")
+str(hr)
+summary(hr)
+
+#Data Cleansing
+
+hr = hr[hr$Attrition == "Current employee" | hr$Attrition=="Voluntary Resignation",]
+hr$Attrition <- as.factor(hr$Attrition)
+
+hr$BusinessTravel <- as.factor(hr$BusinessTravel)
+hr$Department <- as.factor(hr$Department)
+hr$DistanceFromHome <- as.numeric(hr$DistanceFromHome)
+hr$DistanceFromHome <- ifelse(is.na(hr$DistanceFromHome),mean(hr$DistanceFromHome,na.rm = TRUE),hr$DistanceFromHome)
+str(hr$JobSatisfaction)
+
+hr$EducationField <- as.factor(hr$EducationField)
+
+hr$EmployeeCount <- NULL
+hr$EmployeeNumber <- as.numeric(hr$EmployeeNumber)
+hr$EmployeeNumber <- ifelse(is.na(hr$EmployeeNumber),mean(hr$EmployeeNumber,na.rm = TRUE),hr$EmployeeNumber)
+
+hr$Application.ID <- NULL
+
+hr$Gender <- as.factor(hr$Gender)
+hr$JobRole <- as.factor(hr$JobRole)
+
+hr$JobSatisfaction <- as.numeric(hr$JobSatisfaction)
+hr$JobSatisfaction <- ifelse(is.na(hr$JobSatisfaction),mean(hr$JobSatisfaction,na.rm = TRUE),hr$JobSatisfaction)
+hr$MaritalStatus <- as.factor(hr$MaritalStatus)
+
+hr$MonthlyIncome <- as.numeric(hr$MonthlyIncome)
+hr$MonthlyIncome <- ifelse(is.na(hr$MonthlyIncome),mean(hr$MonthlyIncome,na.rm = TRUE),hr$MonthlyIncome)
+
+
+hr$Age <- ifelse(is.na(hr$Age),mean(hr$Age,na.rm = TRUE),hr$Age)
+hr$DailyRate <- ifelse(is.na(hr$DailyRate),mean(hr$DailyRate,na.rm = TRUE),hr$DailyRate)
+hr$EnvironmentSatisfaction <- ifelse(is.na(hr$EnvironmentSatisfaction),mean(hr$EnvironmentSatisfaction,na.rm = TRUE),hr$EnvironmentSatisfaction)
+hr$JobInvolvement <- ifelse(is.na(hr$JobInvolvement),mean(hr$JobInvolvement,na.rm = TRUE),hr$JobInvolvement)
+hr$NumCompaniesWorked <- ifelse(is.na(hr$NumCompaniesWorked),mean(hr$NumCompaniesWorked,na.rm = TRUE),hr$NumCompaniesWorked)
+hr$StockOptionLevel <- ifelse(is.na(hr$StockOptionLevel),mean(hr$StockOptionLevel,na.rm = TRUE),hr$StockOptionLevel)
+hr$TrainingTimesLastYear <- ifelse(is.na(hr$TrainingTimesLastYear),mean(hr$TrainingTimesLastYear,na.rm = TRUE),hr$TrainingTimesLastYear)
+hr$WorkLifeBalance <- ifelse(is.na(hr$WorkLifeBalance),mean(hr$WorkLifeBalance,na.rm = TRUE),hr$WorkLifeBalance)
+hr$YearsInCurrentRole <- ifelse(is.na(hr$YearsInCurrentRole),mean(hr$YearsInCurrentRole,na.rm = TRUE),hr$YearsInCurrentRole)
+hr$YearsSinceLastPromotion <- ifelse(is.na(hr$YearsSinceLastPromotion),mean(hr$YearsSinceLastPromotion,na.rm = TRUE),hr$YearsSinceLastPromotion)
+
+hr$Over18 <- as.factor(hr$Over18)
+hr$OverTime <- as.factor(hr$OverTime)
+hr$PercentSalaryHike <- as.numeric(hr$PercentSalaryHike)
+hr$PercentSalaryHike <- ifelse(is.na(hr$PercentSalaryHike),mean(hr$PercentSalaryHike,na.rm = TRUE),hr$PercentSalaryHike)
+
+hr$StandardHours <- NULL
+
+hr$Employee.Source <- as.factor(hr$Employee.Source)
+
+summary(hr)
+
+```
+
+## Test and train data
+```{r}
+
+set.seed(12345)
+hr_random1 <- sample(1:nrow(hr),8000)
+
+hr_train <- hr[-hr_random1, ]
+hr_test <- hr[hr_random1, ]
+
+```
+
+## Load libraries
+
+```{r}
+library("C50")
+library("gmodels")
+library(caret)
+library(neuralnet)
+library(class)
+```
+
+
+```{r}
+
+LRM <- glm(Attrition ~ ., data = hr_train, family = "binomial")
+
+summary(LRM)
+
+LRM2 <- glm(Attrition ~ Age + DailyRate + DistanceFromHome + EnvironmentSatisfaction + JobInvolvement + JobSatisfaction + NumCompaniesWorked + PercentSalaryHike + StockOptionLevel + TrainingTimesLastYear + WorkLifeBalance + YearsInCurrentRole + YearsSinceLastPromotion, data = hr_train, family = "binomial", na.action = na.omit)
+
+summary(LRM2)
+
+#Create a predict variable
+LR_predict <- ifelse(predict(LRM2, hr_test, type = "response")<0.3,"Current employee","Voluntary Resignation")
+LR_predict <- as.factor(LR_predict)
+
+summary(LR_predict)
+summary(hr_test$Attrition)
+
+#Create confusion matrix
+str(hr_test$Attrition)
+confusionMatrix(LR_predict,hr_test$Attrition,positive = "Voluntary Resignation")
+
+
+```
+
