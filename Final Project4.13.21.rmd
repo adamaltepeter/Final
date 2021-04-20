@@ -384,9 +384,7 @@ Conf_Matrix_KNN_01$overall["Kappa"]
 ### Prediction Improvement
 
 ```{r}
-# Try different k values. False Negative is lowered when
-sqrt(23217)
-
+# Try different k values. False Negative is lowered when k = 21
 knn_predict_02 <- knn(train = hr_norm_train_knn, test = hr_norm_test_knn,
                    cl = hr_norm_train_labels, k=21)
 
@@ -450,3 +448,46 @@ Conf_Matrix_Tree_Cost$overall["Kappa"]
 ```
 
 ***
+
+## 06 Support Vector Machine Model
+
+### Train Model on Data
+
+```{r}
+library(kernlab)
+
+# SVM Model (l)
+SVM_model <- ksvm(AttritionYes ~ ., data = hr_train, kernel = "vanilladot")
+SVM_model
+```
+
+### Predict and Evaluate Model Performance
+
+```{r}
+# Predict values
+SVM_predictions <- predict(SVM_model, hr_test)
+
+# Confusion Matrix
+Conf_Matrix_SVM <- confusionMatrix(SVM_predictions, as.factor(hr_test$AttritionYes), positive = "1")
+Conf_Matrix_SVM
+
+# Kappa Statistics
+Conf_Matrix_SVM$overall["Kappa"]
+```
+
+### Prediction Improvement
+
+```{r}
+# Second SVM model (radial basis)
+SVM_model_rbf <- ksvm(AttritionYes ~ ., data = hr_train, kernel = "rbfdot")
+
+# Predict values
+SVM_predictions_rbf <- predict(SVM_model_rbf, hr_test)
+
+# Confusion Matrix
+Conf_Matrix_SVM_rbf <- confusionMatrix(SVM_predictions_rbf, as.factor(hr_test$AttritionYes), positive = "1")
+Conf_Matrix_SVM_rbf
+
+# Kappa Statistics
+Conf_Matrix_SVM_rbf$overall["Kappa"]
+```
