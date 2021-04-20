@@ -305,7 +305,7 @@ lr_predict <- ifelse(predict.lr > 0.25, 1, 0)
 
 # Confusion Matrix
 library(caret)
-Conf_Matrix_LR <- confusionMatrix(as.factor(lr_predict), hr_test$AttritionYes, positive = "1")
+Conf_Matrix_LR <- confusionMatrix(as.factor(lr_predict), as.factor(hr_test$AttritionYes), positive = "1")
 Conf_Matrix_LR
 
 # Kappa Statistics
@@ -491,3 +491,27 @@ Conf_Matrix_SVM_rbf
 # Kappa Statistics
 Conf_Matrix_SVM_rbf$overall["Kappa"]
 ```
+
+### Stacked Model
+```{r}
+# Predictions Dataframe
+combined<-data.frame(ann=as.numeric(as.character(ann_predicted_01)),knn=as.numeric(as.character(knn_predict_01)),log=as.numeric(as.character(lr_predict)),dt=as.numeric(as.character(tree_predict)), svm=as.numeric(as.character(SVM_predictions_rbf)), actual=hr_mm$AttritionYes)
+combined
+
+# Selects 2000 random rows for test data
+set.seed(12345)
+combinedtest_set <- sample(1:nrow(combined), 2000) 
+
+# Create a train set and test set for Decision Tree Model and Logistic Regression
+combined_train <- combined[combinedtest_set, ]
+combined_test <- combined[-combinedtest_set, ]
+
+stacked<-C5.0(actual~. ,data=combined_train)
+plot(stacked)
+summary(stacked)
+
+final_predict <- predict(stacked, combined_test)
+
+confusionMatrix(as.factor(final_predict),as.factor(combined_test$actual),positive = "1")
+```
+
