@@ -1,151 +1,18 @@
 ---
-title: "Final Project"
-author: "Takumi Umemaki"
+title: "Final Project: IBM Employee Attrition Prediction"
+author: "Group 3: Adam John Altepeter, Anyu Lei, Shubkarman Singh Sidhu, Andrew Tseng, Takumi Umemaki"
 date: "2021/4/12"
-output: html_document
+output:
+  html_document:
+    toc: true
+    toc_float: true
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Final Project: IBM Employee Attrition Prediction
-
-### Import Data
-```{r}
-hr <- read.csv("IBM HR Data new.csv")
-str(hr)
-summary(hr)
-
-#Data Cleansing
-
-hr = hr[hr$Attrition == "Current employee" | hr$Attrition=="Voluntary Resignation",]
-hr$Attrition <- as.factor(hr$Attrition)
-
-hr$BusinessTravel <- as.factor(hr$BusinessTravel)
-hr$Department <- as.factor(hr$Department)
-hr$DistanceFromHome <- as.numeric(hr$DistanceFromHome)
-hr$DistanceFromHome <- ifelse(is.na(hr$DistanceFromHome),mean(hr$DistanceFromHome,na.rm = TRUE),hr$DistanceFromHome)
-str(hr$JobSatisfaction)
-
-hr$EducationField <- as.factor(hr$EducationField)
-
-hr$EmployeeCount <- NULL
-hr$EmployeeNumber <- as.numeric(hr$EmployeeNumber)
-hr$EmployeeNumber <- ifelse(is.na(hr$EmployeeNumber),mean(hr$EmployeeNumber,na.rm = TRUE),hr$EmployeeNumber)
-
-hr$Application.ID <- NULL
-
-hr$Gender <- as.factor(hr$Gender)
-hr$JobRole <- as.factor(hr$JobRole)
-
-hr$JobSatisfaction <- as.numeric(hr$JobSatisfaction)
-hr$JobSatisfaction <- ifelse(is.na(hr$JobSatisfaction),mean(hr$JobSatisfaction,na.rm = TRUE),hr$JobSatisfaction)
-hr$MaritalStatus <- as.factor(hr$MaritalStatus)
-
-hr$MonthlyIncome <- as.numeric(hr$MonthlyIncome)
-hr$MonthlyIncome <- ifelse(is.na(hr$MonthlyIncome),mean(hr$MonthlyIncome,na.rm = TRUE),hr$MonthlyIncome)
-
-
-hr$Age <- ifelse(is.na(hr$Age),mean(hr$Age,na.rm = TRUE),hr$Age)
-hr$DailyRate <- ifelse(is.na(hr$DailyRate),mean(hr$DailyRate,na.rm = TRUE),hr$DailyRate)
-hr$EnvironmentSatisfaction <- ifelse(is.na(hr$EnvironmentSatisfaction),mean(hr$EnvironmentSatisfaction,na.rm = TRUE),hr$EnvironmentSatisfaction)
-hr$JobInvolvement <- ifelse(is.na(hr$JobInvolvement),mean(hr$JobInvolvement,na.rm = TRUE),hr$JobInvolvement)
-hr$NumCompaniesWorked <- ifelse(is.na(hr$NumCompaniesWorked),mean(hr$NumCompaniesWorked,na.rm = TRUE),hr$NumCompaniesWorked)
-hr$StockOptionLevel <- ifelse(is.na(hr$StockOptionLevel),mean(hr$StockOptionLevel,na.rm = TRUE),hr$StockOptionLevel)
-hr$TrainingTimesLastYear <- ifelse(is.na(hr$TrainingTimesLastYear),mean(hr$TrainingTimesLastYear,na.rm = TRUE),hr$TrainingTimesLastYear)
-hr$WorkLifeBalance <- ifelse(is.na(hr$WorkLifeBalance),mean(hr$WorkLifeBalance,na.rm = TRUE),hr$WorkLifeBalance)
-hr$YearsInCurrentRole <- ifelse(is.na(hr$YearsInCurrentRole),mean(hr$YearsInCurrentRole,na.rm = TRUE),hr$YearsInCurrentRole)
-hr$YearsSinceLastPromotion <- ifelse(is.na(hr$YearsSinceLastPromotion),mean(hr$YearsSinceLastPromotion,na.rm = TRUE),hr$YearsSinceLastPromotion)
-
-hr$Over18 <- as.factor(hr$Over18)
-hr$OverTime <- as.factor(hr$OverTime)
-hr$PercentSalaryHike <- as.numeric(hr$PercentSalaryHike)
-hr$PercentSalaryHike <- ifelse(is.na(hr$PercentSalaryHike),mean(hr$PercentSalaryHike,na.rm = TRUE),hr$PercentSalaryHike)
-
-hr$StandardHours <- NULL
-
-hr$Employee.Source <- as.factor(hr$Employee.Source)
-
-summary(hr)
-
-```
-
-## Test and train data
-```{r}
-
-set.seed(12345)
-hr_random1 <- sample(1:nrow(hr),8000)
-
-hr_train <- hr[-hr_random1, ]
-hr_test <- hr[hr_random1, ]
-
-```
-
-## Load libraries
-
-```{r}
-library("C50")
-library("gmodels")
-library(caret)
-library(neuralnet)
-library(class)
-```
-
-
-```{r}
-
-LRM <- glm(Attrition ~ ., data = hr_train, family = "binomial")
-
-summary(LRM)
-
-LRM2 <- glm(Attrition ~ Age + DailyRate + DistanceFromHome + EnvironmentSatisfaction + JobInvolvement + JobSatisfaction + NumCompaniesWorked + PercentSalaryHike + StockOptionLevel + TrainingTimesLastYear + WorkLifeBalance + YearsInCurrentRole + YearsSinceLastPromotion, data = hr_train, family = "binomial", na.action = na.omit)
-
-summary(LRM2)
-
-#Create a predict variable
-LR_predict <- ifelse(predict(LRM2, hr_test, type = "response")<0.3,"Current employee","Voluntary Resignation")
-LR_predict <- as.factor(LR_predict)
-
-summary(LR_predict)
-summary(hr_test$Attrition)
-
-#Create confusion matrix
-str(hr_test$Attrition)
-confusionMatrix(LR_predict,hr_test$Attrition,positive = "Voluntary Resignation")
-
-
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+## Introduction
 
 ***
 
@@ -162,7 +29,7 @@ summary(hr)
 
 ### Data Cleasing
 
-```{r}
+```{r, warning=FALSE}
 # Convert variables to factors or numerics
 hr$Attrition <- as.factor(hr$Attrition)
 hr$BusinessTravel <- as.factor(hr$BusinessTravel)
@@ -193,7 +60,10 @@ hr <- hr[hr$Employee.Source != "Test", ]
 
 # Remove all rows with NA values
 hr <- hr[complete.cases(hr),]
+```
 
+```{r}
+# Summary and structure of dataframe after cleaning
 summary(hr)
 str(hr)
 ```
@@ -207,7 +77,7 @@ hr$Attrition <- as.factor(ifelse(hr$Attrition == "Voluntary Resignation", "Yes",
 # Convert all factors into dummy variables as the input into ANN has to be numeric
 hr_mm <- as.data.frame(model.matrix(~.-1,hr))
 
-# Both AttritionYes and AttritionNo are created, so we remove AttritionNo column
+# Both AttritionYes and AttritionNo are created when converting to dummies, so we remove AttritionNo column
 hr_mm$AttritionNo <- NULL
 
 # Remove the columns with NaN values
@@ -225,7 +95,7 @@ normalize <- function(x) {
 
 hr_norm <- as.data.frame(lapply(hr_mm, normalize))
 
-# Summary of data for Logistic Regression and Decision Tree Model
+# Summary of data for Logistic Regression, Decision Tree and Support Vector Machine Models
 str(hr_mm)
 summary(hr_mm)
 
@@ -237,17 +107,27 @@ summary(hr_norm)
 ### Get Train and Test Samples
 
 ```{r}
-# Selects 8000 random rows for test data
+# Selects 10000 random rows for test data
 set.seed(12345)
-test_set <- sample(1:nrow(hr_mm), 8000) 
+test_set <- sample(1:nrow(hr_mm), 10000) 
 
-# Create a train set and test set for Decision Tree Model and Logistic Regression
+# Create a train set and test set for Logistic Regression, Decision Tree and Support Vector Machine Models
 hr_train <- hr_mm[-test_set, ]
 hr_test <- hr_mm[test_set, ]
 
-# Create a train set and test set for ANN and KNN
+# Create a normalized train set and test set for ANN and KNN
 hr_norm_train <- hr_norm[-test_set, ]
 hr_norm_test <- hr_norm[test_set, ]
+```
+
+### Load Library
+
+```{r}
+library(caret)
+library(neuralnet)
+library(class)
+library(C50)
+library(kernlab)
 ```
 
 ***
@@ -256,26 +136,25 @@ hr_norm_test <- hr_norm[test_set, ]
 
 ### Train Model on Data
 
-> We firstly run a logistic regression on all independent variables
+> Firstly, we run a logistic regression on all independent variables
 
 ```{r}
-# Logistic model
+# Logistic regression model
 lr_01 <- glm(AttritionYes ~ ., data = hr_train, family = "binomial")
 summary(lr_01)
 ```
 
 ### Improve Model Fit using Stepwise Selection
 
-> We use stepwise regression to find the optimal subset of independent variables
+> Then, we use stepwise regression to find the optimal subset of independent variables
 
-```{r results='hide'}
+```{r, eval=FALSE}
 # Perform backward stepwise selection
 lr_02 <- step(lr_01, direction = "backward")
-summary(lr_02)
 ```
 
 ```{r}
-# Logistic model with best subset using stepwise regression
+# Second logistic regression model with the best subset from stepwise regression
 lr_02 <- glm(AttritionYes ~ Age + BusinessTravelTravel_Frequently + 
                BusinessTravelTravel_Rarely + DailyRate + `DepartmentResearch & Development` + 
                DistanceFromHome + `EducationFieldHuman Resources` + `EducationFieldLife Sciences` + 
@@ -304,7 +183,6 @@ predict.lr <- predict(lr_02, newdata = hr_test, type = "response")
 lr_predict <- ifelse(predict.lr > 0.25, 1, 0)
 
 # Confusion Matrix
-library(caret)
 Conf_Matrix_LR <- confusionMatrix(as.factor(lr_predict), as.factor(hr_test$AttritionYes), positive = "1")
 Conf_Matrix_LR
 
@@ -314,15 +192,12 @@ Conf_Matrix_LR$overall["Kappa"]
 
 ***
 
-## 03 ANN
+## 03 ANN Model
 
 ### Train Model on Data
 
-```{r}
-# Train the neuralnet model
-library(neuralnet)
-
-# Simple ANN with only a single hidden neuron
+```{r, cache=TRUE}
+# ANN with one hidden neuron
 ann_01 <- neuralnet(formula = AttritionYes ~ ., data = hr_norm_train, stepmax=1e7)
 ```
 
@@ -330,24 +205,26 @@ ann_01 <- neuralnet(formula = AttritionYes ~ ., data = hr_norm_train, stepmax=1e
 
 ```{r}
 # Obtain model results
-ann_model_results_01 <- compute(ann_01, hr_norm_test)
+ann_model_results <- compute(ann_01, hr_norm_test)
 
 # Classify predicted probabilities using CutOff = 0.4
-ann_predicted_01 <- ifelse(ann_model_results_01$net.result > 0.4, 1, 0)
+ann_predict <- ifelse(ann_model_results$net.result > 0.4, 1, 0)
 
 # Confusion Matrix
-Conf_Matrix_ANN_01 <- confusionMatrix(as.factor(ann_predicted_01), as.factor(hr_norm_test$AttritionYes), positive = "1")
-Conf_Matrix_ANN_01
+Conf_Matrix_ANN <- confusionMatrix(as.factor(ann_predict), as.factor(hr_norm_test$AttritionYes), positive = "1")
+Conf_Matrix_ANN
 
 # Kappa Statistics
-Conf_Matrix_ANN_01$overall["Kappa"]
+Conf_Matrix_ANN$overall["Kappa"]
 ```
 
 ***
 
-## 04 KNN
+## 04 KNN Model
 
 ### Train Model on Data
+
+> Firstly, we build a KNN model by setting k equals the square root of the size of train data
 
 ```{r}
 # Exclude target variable from train and test data
@@ -361,13 +238,12 @@ hr_norm_test_knn$AttritionYes <- NULL
 hr_norm_train_labels <- hr_norm_train$AttritionYes
 hr_norm_test_labels <- hr_norm_test$AttritionYes
 
-# Find k value using the square root of the size of training data
-sqrt(15217)
+# Find k value using the square root of the size of train data
+sqrt(13217)
 
-# Use KNN to classify test data
-library(class)
-knn_predict_01 <- knn(train = hr_norm_train_knn, test = hr_norm_test_knn,
-                   cl = hr_norm_train_labels, k=123)
+# Use KNN to classify test data, k = 115
+knn_predict_01 <- knn(train = hr_norm_train_knn, test = hr_norm_test_knn, 
+                      cl = hr_norm_train_labels, k=115)
 ```
 
 ### Predict and Evaluate Model Performance
@@ -383,10 +259,12 @@ Conf_Matrix_KNN_01$overall["Kappa"]
 
 ### Prediction Improvement
 
+> Then, we find another k to improve model predictions
+
 ```{r}
-# Try different k values. False Negative is lowered when k = 21
-knn_predict_02 <- knn(train = hr_norm_train_knn, test = hr_norm_test_knn,
-                   cl = hr_norm_train_labels, k=21)
+# Try different k values. Smaller k leads to lowered False Negative and higher Kappa, so we use k = 7
+knn_predict_02 <- knn(train = hr_norm_train_knn, test = hr_norm_test_knn, 
+                      cl = hr_norm_train_labels, k=7)
 
 # Confusion Matrix
 Conf_Matrix_KNN_02 <- confusionMatrix(knn_predict_02, as.factor(hr_norm_test_labels), positive = "1")
@@ -403,11 +281,14 @@ Conf_Matrix_KNN_02$overall["Kappa"]
 ### Train Model on Data
 
 ```{r}
-library(C50)
+# Convert response variable to factor
 hr_train$AttritionYes <- as.factor(hr_train$AttritionYes)
 
 # Decision tree model
 tree_model <- C5.0(AttritionYes ~ ., data = hr_train)
+```
+
+```{r, eval=FALSE}
 summary(tree_model)
 ```
 
@@ -454,25 +335,23 @@ Conf_Matrix_Tree_Cost$overall["Kappa"]
 ### Train Model on Data
 
 ```{r}
-library(kernlab)
-
-# SVM Model (l)
-SVM_model <- ksvm(AttritionYes ~ ., data = hr_train, kernel = "vanilladot")
-SVM_model
+# First SVM model (linear)
+SVM_model_vani <- ksvm(AttritionYes ~ ., data = hr_train, kernel = "vanilladot")
+SVM_model_vani
 ```
 
 ### Predict and Evaluate Model Performance
 
 ```{r}
 # Predict values
-SVM_predictions <- predict(SVM_model, hr_test)
+SVM_predict_vani <- predict(SVM_model_vani, hr_test)
 
 # Confusion Matrix
-Conf_Matrix_SVM <- confusionMatrix(SVM_predictions, as.factor(hr_test$AttritionYes), positive = "1")
-Conf_Matrix_SVM
+Conf_Matrix_SVM_vani <- confusionMatrix(SVM_predict_vani, as.factor(hr_test$AttritionYes), positive = "1")
+Conf_Matrix_SVM_vani
 
 # Kappa Statistics
-Conf_Matrix_SVM$overall["Kappa"]
+Conf_Matrix_SVM_vani$overall["Kappa"]
 ```
 
 ### Prediction Improvement
@@ -482,36 +361,125 @@ Conf_Matrix_SVM$overall["Kappa"]
 SVM_model_rbf <- ksvm(AttritionYes ~ ., data = hr_train, kernel = "rbfdot")
 
 # Predict values
-SVM_predictions_rbf <- predict(SVM_model_rbf, hr_test)
+SVM_predict_rbf <- predict(SVM_model_rbf, hr_test)
 
 # Confusion Matrix
-Conf_Matrix_SVM_rbf <- confusionMatrix(SVM_predictions_rbf, as.factor(hr_test$AttritionYes), positive = "1")
+Conf_Matrix_SVM_rbf <- confusionMatrix(SVM_predict_rbf, as.factor(hr_test$AttritionYes), positive = "1")
 Conf_Matrix_SVM_rbf
 
 # Kappa Statistics
 Conf_Matrix_SVM_rbf$overall["Kappa"]
 ```
 
-### Stacked Model
+***
+
+## 07 Stacked Model
+
+### Create A New Dataframe
+
 ```{r}
-# Predictions Dataframe
-combined<-data.frame(ann=as.numeric(as.character(ann_predicted_01)),knn=as.numeric(as.character(knn_predict_01)),log=as.numeric(as.character(lr_predict)),dt=as.numeric(as.character(tree_predict)), svm=as.numeric(as.character(SVM_predictions_rbf)), actual=hr_mm$AttritionYes)
-combined
+# Combine predictions to a new dataframe
+combined <- data.frame(ann=as.numeric(as.character(ann_predict)), knn=as.numeric(as.character(knn_predict_02)), log=as.numeric(as.character(lr_predict)), dt=as.numeric(as.character(tree_cost_predict)), svm=as.numeric(as.character(SVM_predict_rbf)), actual=hr_test$AttritionYes)
+summary(combined)
 
-# Selects 2000 random rows for test data
+# Selects 3000 random rows for test data
 set.seed(12345)
-combinedtest_set <- sample(1:nrow(combined), 2000) 
+combinedtest_set <- sample(1:nrow(combined), 3000) 
 
-# Create a train set and test set for Decision Tree Model and Logistic Regression
+# Create a train set and test set for stacked model
 combined_train <- combined[-combinedtest_set, ]
 combined_test <- combined[combinedtest_set, ]
+```
 
-stacked<-C5.0(actual~. ,data=combined_train)
-plot(stacked)
+### Stacked Model
+
+```{r}
+# Convert response variable (combined$AttritionYes) to factor
+combined_train$actual <- as.factor(combined_train$actual)
+
+# Stacked Model (Secondary Decision Tree Model)
+stacked <- C5.0(actual ~ ., data=combined_train)
 summary(stacked)
 
+# Predictions
 final_predict <- predict(stacked, combined_test)
 
-confusionMatrix(as.factor(final_predict),as.factor(combined_test$actual),positive = "1")
+# Confusion Matrix
+Conf_Matrix_Stacked <- confusionMatrix(final_predict, as.factor(combined_test$actual),positive = "1")
+Conf_Matrix_Stacked
+
+# Kappa Statistics
+Conf_Matrix_Stacked$overall["Kappa"]
 ```
+
+***
+
+## Comparison of Models
+
+### Accuracy
+
+> **Decision Tree Model** and **Stacked Model** have higher overall accuracy in predictions
+
+```{r}
+# Logistic Regression Model
+Conf_Matrix_LR$overall["Accuracy"]
+# ANN Model
+Conf_Matrix_ANN$overall["Accuracy"]
+# KNN Model
+Conf_Matrix_KNN_02$overall["Accuracy"]
+# Decision Tree Model
+Conf_Matrix_Tree_Cost$overall["Accuracy"]
+# SVM Model
+Conf_Matrix_SVM_rbf$overall["Accuracy"]
+# Stacked Model
+Conf_Matrix_Stacked$overall["Accuracy"]
+```
+
+### Kappa Statistics
+
+> **Stacked Model** has the highest Kappa
+
+```{r}
+# Logistic Regression Model
+Conf_Matrix_LR$overall["Kappa"]
+# ANN Model
+Conf_Matrix_ANN$overall["Kappa"]
+# KNN Model
+Conf_Matrix_KNN_02$overall["Kappa"]
+# Decision Tree Model
+Conf_Matrix_Tree_Cost$overall["Kappa"]
+# SVM Model
+Conf_Matrix_SVM_rbf$overall["Kappa"]
+# Stacked Model
+Conf_Matrix_Stacked$overall["Kappa"]
+```
+
+### False Negative
+
+> **Stacked Model** has the lowest False Negative (predict stay but actually leave the company)
+
+```{r}
+# Logistic Regression Model
+Conf_Matrix_LR$table[1, 2]
+# ANN Model
+Conf_Matrix_ANN$table[1, 2]
+# KNN Model
+Conf_Matrix_KNN_02$table[1, 2]
+# Decision Tree Model
+Conf_Matrix_Tree_Cost$table[1, 2]
+# SVM Model
+Conf_Matrix_SVM_rbf$table[1, 2]
+# Stacked Model
+Conf_Matrix_Stacked$table[1, 2]
+```
+
+***
+
+## Conclusion
+
+
+
+
+
+
 
