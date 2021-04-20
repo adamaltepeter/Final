@@ -117,3 +117,336 @@ confusionMatrix(LR_predict,hr_test$Attrition,positive = "Voluntary Resignation")
 
 ```
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+***
+
+## 01 Exploring and Preparing the Data
+
+### Import Data
+
+```{r}
+# Import data
+hr <- read.csv("IBM HR Data new.csv", na.strings = c("", "NA"))
+str(hr)
+summary(hr)
+```
+
+### Data Cleasing
+
+```{r}
+# Convert variables to factors or numerics
+hr$Attrition <- as.factor(hr$Attrition)
+hr$BusinessTravel <- as.factor(hr$BusinessTravel)
+hr$DailyRate <- as.numeric(hr$DailyRate)
+hr$Department <- as.factor(hr$Department)
+hr$DistanceFromHome <- as.numeric(hr$DistanceFromHome)
+hr$EducationField <- as.factor(hr$EducationField)
+hr$Gender <- as.factor(hr$Gender)
+hr$HourlyRate <- as.numeric(hr$HourlyRate)
+hr$JobRole <- as.factor(hr$JobRole)
+hr$JobSatisfaction <- as.numeric(hr$JobSatisfaction)
+hr$MaritalStatus <- as.factor(hr$MaritalStatus)
+hr$MonthlyIncome <- as.numeric(hr$MonthlyIncome)
+hr$OverTime <- as.factor(hr$OverTime)
+hr$PercentSalaryHike <- as.numeric(hr$PercentSalaryHike)
+hr$Employee.Source <- as.factor(hr$Employee.Source)
+
+# Remove non-relevant variables
+hr$EmployeeCount <- NULL
+hr$Application.ID <- NULL
+hr$EmployeeNumber <- NULL
+hr$Over18 <- NULL
+hr$StandardHours <- NULL
+
+# Remove all rows contain "Test"
+hr <- hr[hr$EducationField != "Test", ]
+hr <- hr[hr$Employee.Source != "Test", ]
+
+# Remove all rows with NA values
+hr <- hr[complete.cases(hr),]
+
+summary(hr)
+str(hr)
+```
+
+### Get Data Ready for Analysis
+
+```{r}
+# Convert Attrition variable to Yes/No levels
+hr$Attrition <- as.factor(ifelse(hr$Attrition == "Voluntary Resignation", "Yes", "No"))
+
+# Convert all factors into dummy variables as the input into ANN has to be numeric
+hr_mm <- as.data.frame(model.matrix(~.-1,hr))
+
+# Both AttritionYes and AttritionNo are created, so we remove AttritionNo column
+hr_mm$AttritionNo <- NULL
+
+# Remove the columns with NaN values
+hr_mm$EducationFieldTest <- NULL
+hr_mm$Gender2 <- NULL
+hr_mm$JobRole5 <- NULL
+hr_mm$OverTimeY <- NULL
+hr_mm$Employee.Source2 <- NULL
+hr_mm$Employee.SourceTest <- NULL
+
+# Normalize the data for ANN and KNN
+normalize <- function(x) {
+  return ((x - min(x)) / (max(x) - min(x)))
+}
+
+hr_norm <- as.data.frame(lapply(hr_mm, normalize))
+
+# Summary of data for Logistic Regression and Decision Tree Model
+str(hr_mm)
+summary(hr_mm)
+
+# Summary of data for ANN and KNN
+str(hr_norm)
+summary(hr_norm)
+```
+
+### Get Train and Test Samples
+
+```{r}
+# Selects 8000 random rows for test data
+set.seed(12345)
+test_set <- sample(1:nrow(hr_mm), 8000) 
+
+# Create a train set and test set for Decision Tree Model and Logistic Regression
+hr_train <- hr_mm[-test_set, ]
+hr_test <- hr_mm[test_set, ]
+
+# Create a train set and test set for ANN and KNN
+hr_norm_train <- hr_norm[-test_set, ]
+hr_norm_test <- hr_norm[test_set, ]
+```
+
+***
+
+## 02 Logistic Regression
+
+### Train Model on Data
+
+> We firstly run a logistic regression on all independent variables
+
+```{r}
+# Logistic model
+lr_01 <- glm(AttritionYes ~ ., data = hr_train, family = "binomial")
+summary(lr_01)
+```
+
+### Improve Model Fit using Stepwise Selection
+
+> We use stepwise regression to find the optimal subset of independent variables
+
+```{r results='hide'}
+# Perform backward stepwise selection
+lr_02 <- step(lr_01, direction = "backward")
+summary(lr_02)
+```
+
+```{r}
+# Logistic model with best subset using stepwise regression
+lr_02 <- glm(AttritionYes ~ Age + BusinessTravelTravel_Frequently + 
+               BusinessTravelTravel_Rarely + DailyRate + `DepartmentResearch & Development` + 
+               DistanceFromHome + `EducationFieldHuman Resources` + `EducationFieldLife Sciences` + 
+               EducationFieldMarketing + EducationFieldMedical + EducationFieldOther + 
+               EnvironmentSatisfaction + GenderFemale + HourlyRate + JobInvolvement + 
+               `JobRoleHealthcare Representative` + JobRoleManager + `JobRoleManufacturing Director` + 
+               `JobRoleResearch Director` + `JobRoleResearch Scientist` + 
+               `JobRoleSales Executive` + JobSatisfaction + MaritalStatusDivorced + 
+               MaritalStatusMarried + NumCompaniesWorked + OverTimeYes + 
+               PercentSalaryHike + PerformanceRating + RelationshipSatisfaction + 
+               StockOptionLevel + TrainingTimesLastYear + WorkLifeBalance + 
+               YearsInCurrentRole + YearsSinceLastPromotion + Employee.SourceAdzuna + 
+               `Employee.SourceCompany Website` + Employee.SourceGlassDoor + 
+               Employee.SourceIndeed + Employee.SourceJora + Employee.SourceReferral, 
+             data = hr_train, family = "binomial")
+summary(lr_02)
+```
+
+### Predict and Evaluate Model Performance
+
+```{r}
+# Predict probability on tele_test data based on model
+predict.lr <- predict(lr_02, newdata = hr_test, type = "response")
+
+# Classify predicted probability using CutOff = 0.25
+lr_predict <- ifelse(predict.lr > 0.25, 1, 0)
+
+# Confusion Matrix
+library(caret)
+Conf_Matrix_LR <- confusionMatrix(as.factor(lr_predict), hr_test$AttritionYes, positive = "1")
+Conf_Matrix_LR
+
+# Kappa Statistics
+Conf_Matrix_LR$overall["Kappa"]
+```
+
+***
+
+## 03 ANN
+
+### Train Model on Data
+
+```{r}
+# Train the neuralnet model
+library(neuralnet)
+
+# Simple ANN with only a single hidden neuron
+ann_01 <- neuralnet(formula = AttritionYes ~ ., data = hr_norm_train, stepmax=1e7)
+```
+
+### Predict and Evaluate Model Performance
+
+```{r}
+# Obtain model results
+ann_model_results_01 <- compute(ann_01, hr_norm_test)
+
+# Classify predicted probabilities using CutOff = 0.4
+ann_predicted_01 <- ifelse(ann_model_results_01$net.result > 0.4, 1, 0)
+
+# Confusion Matrix
+Conf_Matrix_ANN_01 <- confusionMatrix(as.factor(ann_predicted_01), as.factor(hr_norm_test$AttritionYes), positive = "1")
+Conf_Matrix_ANN_01
+
+# Kappa Statistics
+Conf_Matrix_ANN_01$overall["Kappa"]
+```
+
+***
+
+## 04 KNN
+
+### Train Model on Data
+
+```{r}
+# Exclude target variable from train and test data
+hr_norm_train_knn <- hr_norm_train
+hr_norm_train_knn$AttritionYes <- NULL
+
+hr_norm_test_knn <- hr_norm_test
+hr_norm_test_knn$AttritionYes <- NULL
+
+# Store class labels for train and test data
+hr_norm_train_labels <- hr_norm_train$AttritionYes
+hr_norm_test_labels <- hr_norm_test$AttritionYes
+
+# Find k value using the square root of the size of training data
+sqrt(15217)
+
+# Use KNN to classify test data
+library(class)
+knn_predict_01 <- knn(train = hr_norm_train_knn, test = hr_norm_test_knn,
+                   cl = hr_norm_train_labels, k=123)
+```
+
+### Predict and Evaluate Model Performance
+
+```{r}
+# Confusion Matrix
+Conf_Matrix_KNN_01 <- confusionMatrix(knn_predict_01, as.factor(hr_norm_test_labels), positive = "1")
+Conf_Matrix_KNN_01
+
+# Kappa Statistics
+Conf_Matrix_KNN_01$overall["Kappa"]
+```
+
+### Prediction Improvement
+
+```{r}
+# Try different k values. False Negative is lowered when
+sqrt(23217)
+
+knn_predict_02 <- knn(train = hr_norm_train_knn, test = hr_norm_test_knn,
+                   cl = hr_norm_train_labels, k=21)
+
+# Confusion Matrix
+Conf_Matrix_KNN_02 <- confusionMatrix(knn_predict_02, as.factor(hr_norm_test_labels), positive = "1")
+Conf_Matrix_KNN_02
+
+# Kappa Statistics
+Conf_Matrix_KNN_02$overall["Kappa"]
+```
+
+***
+
+## 05 Decision Tree Model
+
+### Train Model on Data
+
+```{r}
+library(C50)
+hr_train$AttritionYes <- as.factor(hr_train$AttritionYes)
+
+# Decision tree model
+tree_model <- C5.0(AttritionYes ~ ., data = hr_train)
+summary(tree_model)
+```
+
+### Predict and Evaluate Model Performance
+
+```{r}
+# Predict values
+tree_predict <- predict(tree_model, hr_test)
+
+# Confusion Matrix
+Conf_Matrix_Tree <- confusionMatrix(tree_predict, as.factor(hr_test$AttritionYes), positive = "1")
+Conf_Matrix_Tree
+
+# Kappa Statistics
+Conf_Matrix_Tree$overall["Kappa"]
+```
+
+### Balance Between Different Errors
+
+```{r}
+# We want to lower False Negative (people predicted of staying at the company but actually leave)
+# Cost of Error (Assigning a weight)
+error_cost <- matrix(c(0, 1, 3, 0), nrow = 2)
+error_cost
+
+# New decision tree model by taking account cost of error
+tree_cost_model <- C5.0(AttritionYes ~ ., data = hr_train, costs = error_cost)
+
+# New predictions
+tree_cost_predict <- predict(tree_cost_model, hr_test)
+
+# Confusion Matrix of new model
+Conf_Matrix_Tree_Cost <- confusionMatrix(tree_cost_predict, as.factor(hr_test$AttritionYes), positive = "1")
+Conf_Matrix_Tree_Cost
+
+# Kappa Statistics of new model
+Conf_Matrix_Tree_Cost$overall["Kappa"]
+```
+
+***
